@@ -1,0 +1,8 @@
+go 1.20
+
+use (
+	"./GoesToEleven golang-web-dev master 042_mongodb/05_mongodb/02_update-user-model"
+	./MongoDBOficcial/QuickStart
+	./MongoDBOficcial/go-quickstart
+	./OnlyREALGoNinjasUseMongoDB
+)
