@@ -29,7 +29,7 @@ type Episode struct {
 func main() {
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb+srv://Mado:1gcizwjLQvezpcD0cluster0.db2rbld.mongodb.net/?retryWrites=true&w=majority").SetServerAPIOptions(serverAPI))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb+srv://Madi:MadiMongo2023@cluster0.db2rbld.mongodb.net/?retryWrites=true&w=majority").SetServerAPIOptions(serverAPI))
 	if err != nil {
 		fmt.Println("HERE")
 		panic(err)
