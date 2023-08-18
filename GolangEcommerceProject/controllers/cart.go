@@ -108,8 +108,8 @@ func (app *Application) RemoveItem() gin.HandlerFunc {
 
 func (app *Application) GetItemFromCart() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		user_id := c.Query("id")
-		if user_id == "" {
+		userID := c.Query("id")
+		if userID == "" {
 			c.Header("content-type", "application/json")
 			c.IndentedJSON(http.StatusNotFound, gin.H{"Error": "Invalid search index"})
 			c.Abort()
@@ -117,14 +117,14 @@ func (app *Application) GetItemFromCart() gin.HandlerFunc {
 
 		}
 
-		user_hex_id, err := primitive.ObjectIDFromHex(user_id)
+		user_hex_id, err := primitive.ObjectIDFromHex(userID)
 		if err != nil {
 			log.Println(err)
 			c.IndentedJSON(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*100)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		var filledcart models.User
 		userCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: user_hex_id}}).Decode(&filledcart)
@@ -147,7 +147,7 @@ func (app *Application) GetItemFromCart() gin.HandlerFunc {
 		for pointcursor.Next(ctx) {
 			var list bson.M
 
-			err = pointcursor.Decode(list)
+			err = pointcursor.Decode(&list)
 			if err != nil {
 				log.Print(err)
 				c.AbortWithStatus(http.StatusInternalServerError)

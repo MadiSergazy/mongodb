@@ -16,8 +16,8 @@ import (
 
 func AddAddress() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		user_id := c.Query("id")
-		if user_id == "" {
+		userID := c.Query("id")
+		if userID == "" {
 			c.Header("Content-Type", "application/json")
 			c.JSON(http.StatusNotFound, gin.H{"Error": "invalid Index " + http.StatusText(http.StatusNotFound)})
 			c.Abort()
@@ -25,7 +25,7 @@ func AddAddress() gin.HandlerFunc {
 		}
 
 		address := make([]models.Address, 0)
-		user_hex_id, err := primitive.ObjectIDFromHex(user_id)
+		userHexID, err := primitive.ObjectIDFromHex(userID)
 		if err != nil {
 			log.Println(err)
 			c.IndentedJSON(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
@@ -34,15 +34,18 @@ func AddAddress() gin.HandlerFunc {
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*100)
 		defer cancel()
-		filter := bson.D{primitive.E{Key: "_id", Value: user_hex_id}}
+		filter := bson.D{primitive.E{Key: "_id", Value: userHexID}}
+		// update := bson.M{"$push": bson.M{"address": address}}
 		update := bson.D{Key: "$set", Value: bson.D{primitive.E{Key: "address", Value: address}}}
 
-		_, err := userCollection.UpdateOne(ctx, filter, update)
+		_, err = userCollection.UpdateOne(ctx, filter, update)
 		if err != nil {
+			log.Println(err)
 			c.IndentedJSON(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			c.Abort()
 			return
 		}
-		ctx.Done()
+		// ctx.Done()
 		c.IndentedJSON(http.StatusOK, "Successfully deleted")
 	}
 }
