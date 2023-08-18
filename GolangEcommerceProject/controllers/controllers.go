@@ -168,4 +168,46 @@ func SearchProduct() gin.HandlerFunc {
 }
 
 func SearchProductByQuery() gin.HandlerFunc {
+
+	return func(c *gin.Context) {
+		var searchProducts []models.Product
+
+		queryParam := c.Query("name")
+
+		if queryParam == "" {
+			log.Println("Query is empty")
+			c.Header("Content-Type", "application/json")
+			c.JSON(http.StatusNotFound, gin.H{"Error ": "Invalid search index"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*100)
+		defer cancel()
+
+		cursor, err := productCollection.Find(ctx, bson.M{"product_name": bson.M{"$regex": queryParam}})
+		if err != nil {
+			c.IndentedJSON(http.StatusNotFound, http.StatusText(http.StatusNotFound))
+			return
+		}
+
+		for cursor.Next(ctx) {
+
+			var searchProduct models.Product
+			if err = cursor.Decode(&searchProduct); err != nil {
+				log.Println("SearchProduct decode err: ", err)
+				c.IndentedJSON(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+				return
+			}
+
+			searchProducts = append(searchProducts, searchProduct)
+		}
+		defer cursor.Close(ctx)
+		if err := cursor.Err(); err != nil {
+			log.Println("Error in SearchProductByQuery: ", err)
+			c.IndentedJSON(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
+		}
+		c.IndentedJSON(http.StatusOK, searchProducts)
+	}
+
 }
