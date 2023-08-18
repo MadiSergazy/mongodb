@@ -7,19 +7,39 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator"
 
+	"github.com/MadiSergazy/mongodb/GolangEcommerceProject/database"
 	"github.com/MadiSergazy/mongodb/GolangEcommerceProject/models"
 )
 
+var userCollection *mongo.Collection = database.UserData(database.Client, "Users")
+var productCollection *mongo.Collection = database.UserData(database.Client, "Products")
+var Validate = validator.New()
+
 func HashPasssword(password string) string {
-	return ""
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return string(passwordHash)
 }
 
 func VerifyPasssword(userPassword string, givenPassword string) (bool, string) {
-	return false, ""
+	err := bcrypt.CompareHashAndPassword([]byte(userPassword), []byte(givenPassword))
+	valid := true
+	msg := ""
+	if err != nil {
+		msg = "Login or Password is not correct"
+		valid = false
+	}
+	return valid, msg
 }
 
 func SignUp() gin.HandlerFunc {
@@ -116,7 +136,35 @@ func ProductViewerAdmin() gin.HandlerFunc {
 }
 
 func SearchProduct() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var productList []models.Product
+		var ctx, cancel = context.WithTimeout(context.Background(), time.Second*100)
+		defer cancel()
 
+		cursor, err := productCollection.Find(ctx, bson.D{{}})
+		if err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, "somesing went wrong pleace try after some time")
+		}
+
+		for cursor.Next(ctx) {
+			var product models.Product
+			if err = cursor.Decode(&product); err != nil {
+				log.Println("SearchProduct decode err: ", err)
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+
+			productList = append(productList, product)
+		}
+		defer cursor.Close(context.TODO())
+
+		if err := cursor.Err(); err != nil {
+			log.Println("SearchProduct cursor err: ", err)
+			c.IndentedJSON(http.StatusBadRequest, "invalid value")
+			return
+		}
+		c.IndentedJSON(http.StatusOK, productList)
+	}
 }
 
 func SearchProductByQuery() gin.HandlerFunc {

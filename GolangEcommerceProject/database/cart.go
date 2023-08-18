@@ -11,3 +11,19 @@ var (
 	ErrCantGetItem        = errors.New("cannot get item from cart ")
 	ErrCantBuyCartItem    = errors.New("cannot update the purchase")
 )
+
+func AddProductToCart() {
+
+}
+
+func RemoveCartItem() {
+
+}
+
+func BuyItemFromCart() {
+
+}
+
+func InstantBuyer() {
+
+}
