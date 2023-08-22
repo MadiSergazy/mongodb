@@ -117,7 +117,7 @@ func (app *Application) GetItemFromCart() gin.HandlerFunc {
 
 		}
 
-		user_hex_id, err := primitive.ObjectIDFromHex(userID)
+		userHexID, err := primitive.ObjectIDFromHex(userID)
 		if err != nil {
 			log.Println(err)
 			c.IndentedJSON(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
@@ -127,13 +127,13 @@ func (app *Application) GetItemFromCart() gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		var filledcart models.User
-		userCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: user_hex_id}}).Decode(&filledcart)
+		userCollection.FindOne(ctx, bson.D{primitive.E{Key: "_id", Value: userHexID}}).Decode(&filledcart)
 		if err != nil {
 			log.Println(err)
 			c.IndentedJSON(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 			return
 		}
-		fillter_match := bson.D{{Key: "$match", Value: bson.D{primitive.E{Key: "_id", Value: user_hex_id}}}}
+		fillter_match := bson.D{{Key: "$match", Value: bson.D{primitive.E{Key: "_id", Value: userHexID}}}}
 		unwind := bson.D{{Key: "$unwind", Value: bson.D{primitive.E{Key: "path", Value: "$usercart"}}}}
 		grouping := bson.D{{Key: "$group", Value: bson.D{primitive.E{Key: "_id", Value: "$_id}}"}, {Key: "total", Value: bson.D{primitive.E{Key: "$sum", Value: "$usercart.price"}}}}}}
 
