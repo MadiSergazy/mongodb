@@ -24,6 +24,8 @@ var (
 )
 
 func AddProductToCart(ctx context.Context, prodCollection, userCollection *mongo.Collection, productID primitive.ObjectID, userID string) error {
+	// bson.M This is a map-like type where keys are strings and values can be of various BSON types.
+	// * It's often used for constructing filter criteria for queries.
 	searchFromDB, err := prodCollection.Find(ctx, bson.M{"_id": productID})
 	if err != nil {
 		log.Println(err)
@@ -42,14 +44,29 @@ func AddProductToCart(ctx context.Context, prodCollection, userCollection *mongo
 
 		productCarts = append(productCarts, productCart)
 	}
+	// userID (string) into a primitive.ObjectID. // ^ This conversion is necessary because MongoDB's _id field is typically of type ObjectID.
+	//  If the conversion fails, it logs the error and returns an error indicating that the user ID is not valid.
 	id, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		log.Println(err)
 		return ErrUserIDIsNotValid
 	}
-
+	// bson.D: This is an ordered list of key-value pairs (where the keys are strings) and //^ is used to maintain the order of fields in the document.
+	// ? It's often used for constructing complex queries or updates where field order is important
 	filter := bson.D{primitive.E{Key: "_id", Value: id}}
+	// An update document is constructed to push the products to the user's cart.
+	// * It uses the $push operator to add items to an array field.
+	//^ The array field in this case is "usercart", and the $each operator is used to specify that multiple items (productCarts) should be pushed to the array.
 	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "usercart", Value: bson.D{{Key: "$each", Value: productCarts}}}}}}
+
+	// Update the user's cart
+	// update := bson.D{
+	// 	{Key: "$push", Value: bson.D{
+	// 		{Key: "usercart", Value: bson.D{
+	// 			{Key: "$each", Value: bson.A{product}},
+	// 		}},
+	// 	}},
+	// }
 
 	_, err = userCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
