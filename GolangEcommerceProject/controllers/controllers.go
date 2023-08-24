@@ -16,10 +16,11 @@ import (
 
 	"github.com/MadiSergazy/mongodb/GolangEcommerceProject/database"
 	"github.com/MadiSergazy/mongodb/GolangEcommerceProject/models"
+	generate "github.com/MadiSergazy/mongodb/GolangEcommerceProject/tokens"
 )
 
-var userCollection *mongo.Collection = database.UserData(database.Client, "Users")
-var productCollection *mongo.Collection = database.UserData(database.Client, "Products")
+var userCollection *mongo.Collection = database.Data(database.Client, "Users")
+var productCollection *mongo.Collection = database.Data(database.Client, "Products")
 var Validate = validator.New()
 
 func HashPasssword(password string) string {
@@ -57,7 +58,7 @@ func SignUp() gin.HandlerFunc {
 			return
 
 		}
-		count, err := UserCollection.CountDocuments(ctx, bson.M{"email": user.E})
+		count, err := userCollection.CountDocuments(ctx, bson.M{"email": user.Email})
 		if err != nil {
 			log.Panic(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
@@ -68,7 +69,7 @@ func SignUp() gin.HandlerFunc {
 
 		}
 
-		count, err = UserCollection.CountDocuments(ctx, bson.M{"phone": user.Phone})
+		count, err = userCollection.CountDocuments(ctx, bson.M{"phone": user.Phone})
 
 		if err != nil {
 			log.Panic(err)
@@ -90,11 +91,11 @@ func SignUp() gin.HandlerFunc {
 
 		user.Token = &token
 		user.Refresh_Token = &refreshtoken
-		user.UserCart = moke([]models.ProductUser, 0)
+		user.UserCart = make([]models.ProductUser, 0)
 		user.Address_Details = make([]models.Address, 0)
 		user.Order_Status = make([]models.Order, 0)
 
-		_, insertter := UserCollection.InserOne(ctx, user)
+		_, insertter := userCollection.InsertOne(ctx, user)
 
 		if insertter != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "User did't created"})
@@ -114,25 +115,44 @@ func Login() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 			return
 		}
-
-		if err = UserCollection.FindOne(context, bson.M{"email": user.Email}).Decode(&founduser); err != nil {
+		var founduser models.User
+		if err := userCollection.FindOne(context, bson.M{"email": user.Email}).Decode(&founduser); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Password incorrect"})
 			return
 		}
-		PasswoedIsValid, msg := VerifyPasssword(*User.Password, *founduser.Password)
+		PasswoedIsValid, msg := VerifyPasssword(*user.Password, *founduser.Password)
 		if !PasswoedIsValid {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": msg})
 			return
 		}
 
-		token, refreshtoken, _ := generate.TokenGenerator(*founduser.Email, *founduser.First_Name, *foundUser.Last_Name, *foundUser.User_ID)
-		generate.UpdateAllTokens(token, refreshtoken, *founduser.User_ID)
+		token, refreshtoken, _ := generate.TokenGenerator(*founduser.Email, *founduser.First_Name, *founduser.Last_Name, founduser.User_ID)
+		generate.UpdateAllTokens(token, refreshtoken, founduser.User_ID)
 		c.JSON(http.StatusFound, founduser)
 	}
 }
 
 func ProductViewerAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		var products models.Product
 
+		if err := c.BindJSON(&products); err != nil {
+			c.JSON(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
+		}
+		products.Product_ID = primitive.NewObjectID()
+
+		_, err := productCollection.InsertOne(ctx, products)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Err": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, "successfully added")
+
+	}
 }
 
 func SearchProduct() gin.HandlerFunc {

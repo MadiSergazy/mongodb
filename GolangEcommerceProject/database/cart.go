@@ -70,6 +70,10 @@ func RemoveCartItem(ctx context.Context, prodCOllection, userCollection *mongo.C
 	update := bson.M{"$pull": bson.M{"usercart": bson.M{"_id": productID}}}
 
 	_, err = userCollection.UpdateMany(ctx, filter, update)
+	// db.userCollection.updateMany(
+	// 	{ _id: id },
+	// 	{ $pull: { usercart: { _id: productID } } }
+	//  );
 	if err != nil {
 		return ErrCantRemoveItem
 	}
@@ -106,6 +110,17 @@ func BuyItemFromCart(ctx context.Context, userCollection *mongo.Collection, user
 	// ^ Step 2: Group to calculate the total price of the cart items
 	grouping := bson.D{{Key: "$group", Value: bson.D{primitive.E{Key: "_id", Value: "$id"}, {Key: "total", Value: bson.D{primitive.E{Key: "sum", Value: "$usercart.price"}}}}}}
 	currentResults, err := userCollection.Aggregate(ctx, mongo.Pipeline{unwind, grouping})
+
+	// db.userCollection.aggregate([
+	// 	{ $unwind: "$usercart" },
+	// 	{
+	// 	  $group: {
+	// 		_id: "$_id",
+	// 		total: { $sum: "$usercart.price" }
+	// 	  }
+	// 	}
+	//   ]);
+
 	if err != nil {
 		log.Println(err)
 		return err
@@ -120,14 +135,21 @@ func BuyItemFromCart(ctx context.Context, userCollection *mongo.Collection, user
 
 	var total_price int32
 	for _, user_item := range getUserCarts {
-		price := user_item["total"]
-		total_price = price.(int32)
-
+		if userMap, ok := user_item.(map[string]interface{}); ok {
+			if price, exists := userMap["total"]; exists {
+				total_price = price.(int32)
+			}
+		}
 	}
 	// ^Step 3: Add order to the user collection
 	orderCart.Price = int(total_price)
 	filter := bson.D{primitive.E{Key: "_id", Value: id}}
 	update := bson.D{{Key: "$push", Value: bson.D{primitive.E{Key: "orders", Value: orderCart}}}}
+
+	// db.userCollection.updateMany(
+	// 	{ _id: id },
+	// 	{ $push: { orders: orderCart } }
+	//  );
 
 	_, err = userCollection.UpdateMany(ctx, filter, update)
 	if err != nil {
@@ -138,9 +160,17 @@ func BuyItemFromCart(ctx context.Context, userCollection *mongo.Collection, user
 		log.Println(err)
 		return err
 	}
+	//^ { $push: { "orders.$[].order_list": { $each: getCartItems.UserCart } } }: This update operation uses the $push operator to add the items from getCartItems.
+	//^ UserCart into the order_list array of all orders within the orders array. The $[] operator is used to update all elements in the orders array.
 	// * Step 5: Add cart items to the orders_list of the order
 	filter2 := bson.D{primitive.E{Key: "_id", Value: id}}
 	update2 := bson.M{"$push": bson.M{"orders.$[].order_list": bson.M{"$each": getCartItems.UserCart}}}
+
+	// db.userCollection.updateOne(
+	// 	{ _id: id },
+	// 	{ $push: { "orders.$[].order_list": { $each: getCartItems.UserCart } } }
+	//  );
+
 	_, err = userCollection.UpdateOne(ctx, filter2, update2)
 	if err != nil {
 		log.Println(err)

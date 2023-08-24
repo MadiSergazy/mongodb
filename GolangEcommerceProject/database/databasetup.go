@@ -34,7 +34,7 @@ func DBSet() *mongo.Client {
 
 var Client *mongo.Client = DBSet() //why this func naznashil?
 
-func UserData(client *mongo.Client, collectionName string) *mongo.Collection {
+func Data(client *mongo.Client, collectionName string) *mongo.Collection {
 	var productCollection *mongo.Collection = client.Database("Ecommerce").Collection(collectionName)
 	return productCollection
 }
